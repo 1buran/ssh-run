@@ -5,6 +5,11 @@ It has very very basic ssh functionality and was created for cases when you need
 some command on park of servers to get quickly some info e.g. version of installed php
 or free disk space etc.
 
+Installation:
+```
+go install github.com/1buran/run-ssh@latest
+```
+
 To print help run `ssh-run -h`:
 
 ```
