@@ -1,6 +1,6 @@
 # ssh-run - Run ssh command on multiple hosts
 
-This script runs given command on all given hosts concurrency (goroutines used).
+This script runs given command on all given hosts concurrently (goroutines used).
 It has very very basic ssh functionality and was created for cases when you need just to run
 some command on park of servers to get quickly some info e.g. version of installed php
 or free disk space etc.
