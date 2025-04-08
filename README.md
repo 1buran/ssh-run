@@ -7,7 +7,7 @@ or free disk space etc.
 
 Installation:
 ```
-go install github.com/1buran/run-ssh@latest
+go install github.com/1buran/ssh-run@latest
 ```
 
 To print help run `ssh-run -h`:
