@@ -87,3 +87,17 @@ $ ssh-run -i ~/.ssh/aws-ec.pem -c "uname -r" -u admin 10.10.10.14 10.10.10.12 10
  18:32:12 up 31 days,  2:17,  0 user,  load average: 0.00, 0.00, 0.00
 
 ```
+
+Use `-p` to enter passphrase of ssh private key:
+
+```
+$ ssh-run -i ~/.ssh/aws-ec.pem -c "uname -r" -u admin -p 10.10.10.14 10.10.10.12
+Enter SSH password:
+
+10.10.10.12:22 ❭❭❭ uptime (time: 1.1s)
+ 18:32:12 up 84 days,  2:17,  0 user,  load average: 0.00, 0.00, 0.00
+
+10.10.10.14:22 ❭❭❭ uptime (time: 2.1s)
+ 18:32:12 up 31 days,  2:17,  0 user,  load average: 0.00, 0.00, 0.00
+
+```
