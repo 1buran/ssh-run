@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -76,20 +78,22 @@ func main() {
 
 	fmt.Println()
 
-	done := make(chan struct{})
-	defer close(done)
-
 	hosts := flag.Args()
+
+	var wg sync.WaitGroup
+	wg.Add(len(hosts))
+
 	for _, host := range hosts {
 		go func() {
-			defer func() {
-				done <- struct{}{}
-			}()
+			defer wg.Done()
 
+			if !strings.Contains(host, ":") {
+				host += ":22"
+			}
 			t := time.Now()
 			client, err := ssh.Dial("tcp", host, config)
 			if err != nil {
-				log.Println("Failed to dial: ", err)
+				log.Println(err)
 				return
 			}
 			defer func() {
@@ -121,8 +125,5 @@ func main() {
 			fmt.Println(string(out))
 		}()
 	}
-
-	for range len(hosts) {
-		<-done
-	}
+	wg.Wait()
 }
