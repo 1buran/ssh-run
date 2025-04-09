@@ -41,6 +41,18 @@ the format as golang [time.ParseDuration](https://pkg.go.dev/time#ParseDuration)
 
 ## Examples of usage
 
+Basic params `-u`, `-c`, `-i`:
+
+```
+$ ssh-run [params] -i ~/.ssh/id_rsa -u admin -c "uptime" host1 host2:4566 root@host3 john@host4:3434 ...
+```
+
+this will execute `uptime` command on hosts:
+- `host1`: connect to default ssh port - `22`, use username - `admin`
+- `host2`: connect to custom ssh port - `4566`, use username - `admin`
+- `host3`: connect to default ssh port - `22`, use username - `root`
+- `host4`: connect to custom ssh port - `3434`, use username - `john`
+
 Specify username as part of host string:
 
 ```
