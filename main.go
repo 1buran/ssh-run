@@ -90,6 +90,11 @@ func main() {
 			if !strings.Contains(host, ":") {
 				host += ":22"
 			}
+			if idx := strings.Index(host, "@"); idx >= 0 {
+				config.User = host[:idx]
+				host = host[idx+1:]
+			}
+
 			t := time.Now()
 			client, err := ssh.Dial("tcp", host, config)
 			if err != nil {
