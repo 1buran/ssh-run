@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
@@ -32,6 +33,8 @@ func main() {
 		passwordRequired   bool
 
 		timeout = Timeout{10 * time.Second}
+
+		readHostsFromFile string
 	)
 
 	flag.StringVar(&cmd, "c", "w", "command")
@@ -39,6 +42,7 @@ func main() {
 	flag.StringVar(&user, "u", "", "username")
 	flag.StringVar(&privKey, "i", "", "private key path")
 	flag.Var(&timeout, "t", "timeout")
+	flag.StringVar(&readHostsFromFile, "f", "", "read hosts from file")
 
 	flag.Parse()
 
@@ -80,6 +84,21 @@ func main() {
 	fmt.Println()
 
 	hosts := flag.Args()
+
+	if readHostsFromFile != "" {
+		f, err := os.Open(readHostsFromFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			hosts = append(hosts, strings.TrimSpace(scanner.Text()))
+		}
+		if err := scanner.Err(); err != nil {
+			log.Println(err)
+		}
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(len(hosts))
