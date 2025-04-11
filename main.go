@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -87,6 +88,20 @@ func main() {
 		go func() {
 			defer wg.Done()
 
+			var outBuf, errBuf bytes.Buffer
+			logger := log.New(&errBuf, "", log.LstdFlags|log.Lshortfile)
+
+			t := time.Now()
+			defer func() {
+				fmt.Printf("%s ❭❭❭ %s (time: %s)\n", host, cmd, time.Since(t).Truncate(100*time.Millisecond))
+				if outBuf.Len() > 0 {
+					fmt.Println(outBuf.String())
+				}
+				if errBuf.Len() > 0 {
+					fmt.Println(errBuf.String())
+				}
+			}()
+
 			if !strings.Contains(host, ":") {
 				host += ":22"
 			}
@@ -95,15 +110,14 @@ func main() {
 				host = host[idx+1:]
 			}
 
-			t := time.Now()
 			client, err := ssh.Dial("tcp", host, config)
 			if err != nil {
-				log.Println(err)
+				logger.Println(err)
 				return
 			}
 			defer func() {
 				if err := client.Close(); err != nil {
-					log.Println(err)
+					logger.Println(err)
 					return
 				}
 			}()
@@ -111,23 +125,24 @@ func main() {
 			// var cmdOutput strings.Builder // prevent mix of output of goroutines
 			session, err := client.NewSession()
 			if err != nil {
-				log.Println("Failed to create session: ", err)
+				logger.Println("Failed to create session: ", err)
 				return
 			}
 			defer func() {
 				if err := session.Close(); err != nil && err != io.EOF {
-					log.Println(err)
+					logger.Println(err)
 					return
 				}
 			}()
 
-			out, err := session.CombinedOutput(cmd)
-			if err != nil {
-				log.Println("Failed to run:", err.Error())
+			// todo: session.Stdin = os.Stdin
+			session.Stdout = &outBuf
+			session.Stderr = &errBuf
+
+			if err = session.Run(cmd); err != nil {
+				logger.Println(err)
 				return
 			}
-			fmt.Printf("%s ❭❭❭ %s (time: %s)\n", host, cmd, time.Since(t).Truncate(100*time.Millisecond))
-			fmt.Println(string(out))
 		}()
 	}
 	wg.Wait()
