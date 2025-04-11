@@ -25,6 +25,8 @@ Usage of ssh-run:
     	timeout (default 10s)
   -u string
     	username
+  -upload value
+    	upload file to host (format: /local/path:/host/path)
 ```
 
 Use `-u` to set username.
@@ -42,6 +44,8 @@ the format as golang [time.ParseDuration](https://pkg.go.dev/time#ParseDuration)
 - `20s`: 20 seconds
 - `300s` or `5m`: 5 minutes
 - `1h35m`: 1 hours 35 minutes
+
+Use `-upload` to upload a file on hosts, format: `/local/path:/host/path`.
 
 ## Examples of usage
 
