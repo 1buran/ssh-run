@@ -16,6 +16,8 @@ To print help run `ssh-run -h`:
 Usage of ssh-run:
   -c string
     	command (default "w")
+  -f string
+    	read hosts from file
   -i string
     	private key path
   -p	password is required (flag)
@@ -32,6 +34,8 @@ Use `-p` to enable prompt of entering password of ssh private key.
 Use `-i` to specify a path of ssh private key.
 
 Use `-c` to specify a commnad which will be executed over ssh.
+
+Use `-f` to specify a path to file contains list of hosts (line by line).
 
 Use `-t` option to set timout of ssh connection,
 the format as golang [time.ParseDuration](https://pkg.go.dev/time#ParseDuration) expected e.g.:
