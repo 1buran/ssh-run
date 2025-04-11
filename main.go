@@ -88,8 +88,8 @@ func main() {
 		go func() {
 			defer wg.Done()
 
-			var outBuf, errBuf bytes.Buffer
-			logger := log.New(&errBuf, "", log.LstdFlags|log.Lshortfile)
+			var outBuf, errBuf, logBuf bytes.Buffer
+			logger := log.New(&logBuf, "", log.LstdFlags|log.Lshortfile)
 
 			t := time.Now()
 			defer func() {
@@ -99,6 +99,9 @@ func main() {
 				}
 				if errBuf.Len() > 0 {
 					fmt.Println(errBuf.String())
+				}
+				if logBuf.Len() > 0 {
+					fmt.Println(logBuf.String())
 				}
 			}()
 
