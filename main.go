@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
+	"os/user"
 	"slices"
 	"strings"
 	"sync"
@@ -17,6 +19,7 @@ import (
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/term"
 )
 
@@ -45,14 +48,17 @@ func (u *Upload) Set(value string) error {
 		return fmt.Errorf("path cannot be empty, parsed local path: %q, parsed host path: %q", u.src, u.dst)
 	}
 	f, err := os.Open(u.src)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
-	return err
+	return nil
 }
 
 func main() {
 	var (
-		cmd, user, privKey string
-		passwordRequired   bool
+		cmd, username, privKey string
+		passwordRequired       bool
 
 		timeout = Timeout{10 * time.Second}
 
@@ -61,13 +67,19 @@ func main() {
 		params            []string
 	)
 
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Fatalf("unable to determine current user: %v", err)
+	}
+
 	flag.StringVar(&cmd, "c", "w", "command")
 	flag.BoolVar(&passwordRequired, "p", false, "password is required (flag)")
-	flag.StringVar(&user, "u", "", "username")
+	flag.StringVar(&username, "u", currentUser.Username, "username")
 	flag.StringVar(&privKey, "i", "", "private key path")
 	flag.Var(&timeout, "t", "timeout")
 	flag.StringVar(&readHostsFromFile, "f", "", "read hosts from file")
 	flag.Var(&upload, "upload", "upload file to host (format: /local/path:/host/path)")
+	// flag.BoolVar(&readCmdFromStdin, "stdin", false, "read command from stdin")
 
 	flag.Parse()
 
@@ -79,39 +91,70 @@ func main() {
 		log.Fatal("command and upload are mutually exclusive parameters")
 	}
 
+	// if readCmdFromStdin {
+	// 	b, err := io.ReadAll(os.Stdin)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	cmd = string(b)
+	// }
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	key, err := os.ReadFile(privKey)
-	if err != nil {
-		log.Fatalf("unable to read private key: %v", err)
+	var authMethods []ssh.AuthMethod
+
+	// Use keys from a running ssh-agent if available, so no key path or
+	// passphrase has to be specified. The agent is tried before key files.
+	if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
+		conn, err := net.Dial("unix", sock)
+		if err != nil {
+			log.Printf("unable to connect to ssh-agent: %v", err)
+		} else {
+			defer conn.Close()
+			authMethods = append(authMethods, ssh.PublicKeysCallback(agent.NewClient(conn).Signers))
+		}
+	}
+
+	if privKey != "" {
+		key, err := os.ReadFile(privKey)
+		if err != nil {
+			log.Fatalf("unable to read private key: %v", err)
+		}
+
+		if signer, err := ssh.ParsePrivateKey(key); err != nil {
+			log.Println(privKey, err)
+		} else {
+			authMethods = append(authMethods, ssh.PublicKeys(signer))
+		}
+
+		if passwordRequired {
+			fmt.Print("Enter SSH password: ")
+
+			passphrase, err := term.ReadPassword(syscall.Stdin)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Create the Signer for this private key.
+			if signer, err := ssh.ParsePrivateKeyWithPassphrase(key, passphrase); err != nil {
+				log.Fatalf("unable to parse private key: %v", err)
+			} else {
+				authMethods = append(authMethods, ssh.PublicKeys(signer))
+			}
+		}
+	} else if passwordRequired {
+		log.Fatal("flag -p requires flag -i")
+	}
+
+	if len(authMethods) == 0 {
+		log.Fatal("no authentication methods: pass -i or start ssh-agent")
 	}
 
 	config := &ssh.ClientConfig{
-		User:            user,
+		User:            username,
+		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         timeout.Duration,
-	}
-
-	if signer, err := ssh.ParsePrivateKey(key); err != nil {
-		log.Println(privKey, err)
-	} else {
-		config.Auth = append(config.Auth, ssh.PublicKeys(signer))
-	}
-
-	if passwordRequired {
-		fmt.Print("Enter SSH password: ")
-
-		passphrase, err := term.ReadPassword(syscall.Stdin)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Create the Signer for this private key.
-		if signer, err := ssh.ParsePrivateKeyWithPassphrase(key, passphrase); err != nil {
-			log.Fatalf("unable to parse private key: %v", err)
-		} else {
-			config.Auth = append(config.Auth, ssh.PublicKeys(signer))
-		}
 	}
 
 	fmt.Println()
@@ -160,12 +203,13 @@ func main() {
 			if !strings.Contains(host, ":") {
 				host += ":22"
 			}
+			cfg := *config
 			if idx := strings.Index(host, "@"); idx >= 0 {
-				config.User = host[:idx]
+				cfg.User = host[:idx]
 				host = host[idx+1:]
 			}
 
-			client, err := ssh.Dial("tcp", host, config)
+			client, err := ssh.Dial("tcp", host, &cfg)
 			if err != nil {
 				logger.Println(err)
 				return

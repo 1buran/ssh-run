@@ -29,11 +29,13 @@ Usage of ssh-run:
     	upload file to host (format: /local/path:/host/path)
 ```
 
-Use `-u` to set username.
+Use `-u` to set username. If omitted, the current OS user is used.
+
+Use `-i` to specify a path of ssh private key. This flag is optional:
+if `SSH_AUTH_SOCK` is set and ssh-agent is running, keys loaded into
+the agent are tried automatically, before key files.
 
 Use `-p` to enable prompt of entering password of ssh private key.
-
-Use `-i` to specify a path of ssh private key.
 
 Use `-c` to specify a commnad which will be executed over ssh.
 
@@ -94,6 +96,16 @@ $ ssh-run -i ~/.ssh/aws-ec.pem -c "uname -r" -u admin 10.10.10.14 10.10.10.12 10
 10.10.10.14:22 ❭❭❭ uptime (time: 2.1s)
  18:32:12 up 31 days,  2:17,  0 user,  load average: 0.00, 0.00, 0.00
 
+```
+
+Connect using keys loaded into ssh-agent (no `-i` and `-p` needed):
+
+```
+$ ssh-add ~/.ssh/id_ed25519
+$ ssh-run -c "uptime" -u admin 10.10.10.14 10.10.10.12
+
+10.10.10.14:22 ❭❭❭ uptime (time: 1.2s)
+...
 ```
 
 Use `-p` to enter passphrase of ssh private key:
